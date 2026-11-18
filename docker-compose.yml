@@ -1,0 +1,224 @@
+# docker-compose.yml — บอก Docker ว่ามีกล่อง (service) อะไรบ้าง และตั้งค่ายังไง
+#
+# คำสั่งที่ใช้บ่อย (รันในโฟลเดอร์นี้):
+#   docker compose up -d        เปิดกล่อง (mongo + api)
+#   docker compose ps           ดูสถานะ
+#   docker compose logs -f api  ดู log ของ api
+#   docker compose down         ปิดทุกกล่อง (ข้อมูลใน volume ยังอยู่)
+#
+# ค่าใน ${...} อ่านจากไฟล์ .env ข้างๆ อัตโนมัติ
+# ${ชื่อ:-ค่า} = ถ้าใน .env ไม่มี ใช้ "ค่า" แทน
+
+# ชื่อโปรเจกต์ → ชื่อกล่องจะเป็น testerp-<service>-1
+name: testerp
+
+# ค่าที่กล่อง ERPNext ทุกตัวใช้ร่วมกัน (เรียกใช้ด้วย <<: *erpnext)
+# ตอนนี้ใช้ Frappe Cloud → กล่อง ERPNext ใน Docker ไม่เปิดเอง
+# ถ้าอยากเปิด: docker compose --profile erp-local up -d
+x-erpnext: &erpnext
+  profiles: ["erp-local"]
+  image: frappe/erpnext:v16.55.0
+  restart: on-failure
+  volumes:
+    - erp-sites:/home/frappe/frappe-bench/sites
+    - erp-logs:/home/frappe/frappe-bench/logs
+
+services:
+  # ==================== ส่วนของเรา ====================
+
+  # ---------- ฐานข้อมูล MongoDB ----------
+  mongo:
+    image: mongo:8                 # ใช้ image สำเร็จรูปจาก Docker Hub (ไม่ต้องเขียน Dockerfile)
+    restart: unless-stopped        # กล่องดับเอง → เปิดใหม่ให้ (ยกเว้นเราสั่งหยุด)
+    environment:
+      # user/รหัส admin ของ MongoDB (สร้างครั้งแรกที่ volume ยังว่างเท่านั้น)
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD}
+    ports:
+      - "27017:27017"            # "port เครื่องเรา:port ในกล่อง" → ให้ MongoDB Compass ในเครื่องต่อได้
+    volumes:
+      - mongo-data:/data/db      # ข้อมูลอยู่ใน volume ปิดกล่องแล้วไม่หาย
+    healthcheck:                 # Docker เช็กทุก 5 วิ ว่า MongoDB พร้อมหรือยัง
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
+      interval: 5s
+      retries: 10
+
+  # ---------- FastAPI (Python) ----------
+  api:
+    build: ./api                   # สร้าง image เองจาก api/Dockerfile
+    environment:                   # ค่าเหล่านี้ → config.py อ่านไปใช้
+      # "mongo" คือชื่อกล่องข้างบน (ในเครือข่าย Docker ใช้ชื่อแทน localhost)
+      MONGO_URL: mongodb://${MONGO_USER}:${MONGO_PASSWORD}@mongo:27017/?authSource=admin
+      MONGO_DB: testerp
+      # ERPNext: ตั้งใน .env (Frappe Cloud หรือ http://erp-frontend:8080 ถ้าใช้ตัวใน Docker)
+      ERP_URL: ${ERP_URL}
+      ERP_API_KEY: ${ERP_API_KEY}
+      ERP_API_SECRET: ${ERP_API_SECRET}
+      SYNC_INTERVAL: ${SYNC_INTERVAL:-60}   # auto-sync ทุกกี่วินาที (0 = ปิด)
+      WATCHFILES_FORCE_POLLING: "true"   # ให้ reload ทำงานบน Windows
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./api:/app               # แก้โค้ดในเครื่อง → กล่องเห็นทันที
+    depends_on:                  # เปิด api หลัง mongo ...
+      mongo:
+        condition: service_healthy   # ... และรอจน healthcheck ของ mongo ผ่านก่อน
+
+  # ---------- Next.js (หน้าเว็บ) ----------
+  # ตอน dev ให้รัน "npm run dev" ในเครื่องแทน (บน Windows hot reload ในกล่องไม่ทำงาน)
+  # ถ้าอยากรันในกล่องจริงๆ: docker compose --profile web up -d
+  web:
+    profiles: ["web"]
+    build: ./web
+    environment:
+      # browser เป็นคนเรียก API จึงต้องใช้ localhost (ไม่ใช่ชื่อกล่อง)
+      NEXT_PUBLIC_API_URL: http://localhost:8000
+      WATCHPACK_POLLING: "true"
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./web:/app
+      - /app/node_modules        # ใช้ node_modules ในกล่อง ไม่ใช้ของ Windows
+      - /app/.next
+    depends_on:
+      - api
+
+  # ==================== ERPNext (ดัดแปลงจาก frappe_docker/pwd.yml) ====================
+
+  # ฐานข้อมูลของ ERPNext (MariaDB) — แยกจาก MongoDB ของเรา
+  erp-db:
+    profiles: ["erp-local"]
+    image: mariadb:11.8
+    restart: on-failure
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --skip-character-set-client-handshake
+      - --innodb-snapshot-isolation=OFF
+    environment:
+      MARIADB_ROOT_PASSWORD: ${ERP_DB_ROOT_PASSWORD}
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      retries: 20
+    volumes:
+      - erp-db-data:/var/lib/mysql
+
+  # Redis: cache และคิวงานเบื้องหลัง
+  erp-redis-cache:
+    profiles: ["erp-local"]
+    image: redis:6.2-alpine
+    restart: on-failure
+
+  erp-redis-queue:
+    profiles: ["erp-local"]
+    image: redis:6.2-alpine
+    restart: on-failure
+    volumes:
+      - erp-redis-queue-data:/data
+
+  # รันครั้งเดียว: เขียน config ให้ ERPNext รู้ว่า db / redis อยู่ที่ไหน
+  erp-configurator:
+    <<: *erpnext
+    restart: "no"
+    entrypoint: ["bash", "-c"]
+    command:
+      - >
+        ls -1 apps > sites/apps.txt;
+        bench set-config -g db_host erp-db;
+        bench set-config -gp db_port 3306;
+        bench set-config -g redis_cache "redis://erp-redis-cache:6379";
+        bench set-config -g redis_queue "redis://erp-redis-queue:6379";
+        bench set-config -g redis_socketio "redis://erp-redis-queue:6379";
+        bench set-config -gp socketio_port 9000;
+    depends_on:
+      erp-db:
+        condition: service_healthy
+      erp-redis-cache:
+        condition: service_started
+      erp-redis-queue:
+        condition: service_started
+
+  # รันครั้งเดียว: สร้าง site "erp.localhost" + ติดตั้ง ERPNext (ครั้งแรกใช้เวลาหลายนาที)
+  erp-create-site:
+    <<: *erpnext
+    restart: "no"
+    entrypoint: ["bash", "-c"]
+    command:
+      - |
+        if [ -d "sites/erp.localhost" ]; then
+          echo "site already exists"
+        else
+          bench new-site --mariadb-user-host-login-scope='%' \
+            --admin-password=${ERP_ADMIN_PASSWORD} \
+            --db-root-username=root --db-root-password=${ERP_DB_ROOT_PASSWORD} \
+            --install-app erpnext --set-default erp.localhost
+        fi
+    depends_on:
+      erp-configurator:
+        condition: service_completed_successfully
+
+  # ตัวประมวลผลหลัก (Python/Frappe)
+  erp-backend:
+    <<: *erpnext
+    depends_on:
+      erp-configurator:
+        condition: service_completed_successfully
+
+  # หน้าบ้าน (nginx) — เปิดดูได้ที่ http://localhost:8080
+  erp-frontend:
+    <<: *erpnext
+    command: ["nginx-entrypoint.sh"]
+    environment:
+      BACKEND: erp-backend:8000
+      SOCKETIO: erp-websocket:9000
+      FRAPPE_SITE_NAME_HEADER: erp.localhost   # ทุก request ไปที่ site นี้
+      UPSTREAM_REAL_IP_ADDRESS: 127.0.0.1
+      UPSTREAM_REAL_IP_HEADER: X-Forwarded-For
+      UPSTREAM_REAL_IP_RECURSIVE: "off"
+      PROXY_READ_TIMEOUT: 120
+      CLIENT_MAX_BODY_SIZE: 50m
+    ports:
+      - "8080:8080"
+    depends_on:
+      - erp-backend
+      - erp-websocket
+
+  # real-time (แจ้งเตือนสดบนหน้าเว็บ ERPNext)
+  erp-websocket:
+    <<: *erpnext
+    command: ["node", "/home/frappe/frappe-bench/apps/frappe/socketio.js"]
+    depends_on:
+      erp-configurator:
+        condition: service_completed_successfully
+
+  # worker: ทำงานเบื้องหลัง เช่น ส่งอีเมล, สร้างรายงาน
+  erp-queue-short:
+    <<: *erpnext
+    command: ["bench", "worker", "--queue", "short,default"]
+    depends_on:
+      erp-configurator:
+        condition: service_completed_successfully
+
+  erp-queue-long:
+    <<: *erpnext
+    command: ["bench", "worker", "--queue", "long,default,short"]
+    depends_on:
+      erp-configurator:
+        condition: service_completed_successfully
+
+  # scheduler: งานตามเวลา (cron) ของ ERPNext
+  erp-scheduler:
+    <<: *erpnext
+    command: ["bench", "schedule"]
+    depends_on:
+      erp-configurator:
+        condition: service_completed_successfully
+
+# ประกาศ volume (ที่เก็บข้อมูลถาวรของ Docker)  ลบได้ด้วย: docker compose down -v
+volumes:
+  mongo-data:
+  erp-db-data:
+  erp-redis-queue-data:
+  erp-sites:
+  erp-logs:

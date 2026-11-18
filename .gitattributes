@@ -1,0 +1,2 @@
+# เก็บไฟล์ข้อความเป็น LF เสมอ (กล่อง Docker เป็น Linux ใช้ LF)
+* text=auto eol=lf
