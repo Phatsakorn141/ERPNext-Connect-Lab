@@ -1,8 +1,8 @@
 // app/page.js — หน้าแรกของร้าน Pskant Shop (URL: /)
 // ไม่มี "use client" → เป็น Server Component (สร้าง HTML ที่ server)
 //
-// ข้อมูลจริง (จาก FastAPI → MongoDB): หมวดหมู่, สินค้าแนะนำ
-// ยังเป็นข้อมูลปลอม (data/mock.js):   banner โปร, รีวิวลูกค้า
+// ข้อมูลจริง (จาก FastAPI → MongoDB): หมวดหมู่, สินค้าแนะนำ, รีวิวลูกค้า
+// ข้อมูลตั้งไว้ในโค้ด (data/mock.js):  banner โปรโมชัน
 
 import { Suspense } from "react";
 import Header from "@/components/shop/Header";
@@ -14,7 +14,7 @@ import PromoBanners from "@/components/shop/PromoBanners";
 import Testimonials from "@/components/shop/Testimonials";
 import Newsletter from "@/components/shop/Newsletter";
 import FeatureBar from "@/components/shop/FeatureBar";
-import { promos, testimonials } from "@/data/mock";
+import { promos } from "@/data/mock";
 
 export default function Home() {
   return (
@@ -38,7 +38,9 @@ export default function Home() {
         </section>
 
         <PromoBanners promos={promos} />
-        <Testimonials items={testimonials} />
+        <Suspense fallback={<div className="h-40 animate-pulse rounded-2xl bg-zinc-100" />}>
+          <Testimonials />
+        </Suspense>
         <Newsletter />
         <FeatureBar />
       </main>

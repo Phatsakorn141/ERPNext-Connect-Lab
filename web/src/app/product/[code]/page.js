@@ -7,6 +7,10 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ChevronRight, RotateCcw, ShieldCheck, Truck } from "lucide-react";
 import AddToCartButton from "@/components/cart/AddToCartButton";
+import WishlistButton from "@/components/wishlist/WishlistButton";
+import ReviewForm from "@/components/reviews/ReviewForm";
+import ReviewList from "@/components/reviews/ReviewList";
+import { Stars } from "@/components/shop/ProductCard";
 import Header from "@/components/shop/Header";
 import FeatureBar from "@/components/shop/FeatureBar";
 import ProductGrid, { ApiError, ProductGridSkeleton } from "@/components/shop/ProductGrid";
@@ -75,6 +79,12 @@ async function ProductDetail({ code }) {
             {p.item_group}
           </Link>
           <h1 className="font-serif text-3xl leading-tight text-brand md:text-4xl">{p.item_name}</h1>
+          {/* คะแนนรีวิว (rating_avg/rating_count ถูกเติมลงสินค้าตอนมีคนรีวิว) → กดแล้วเลื่อนลงไปที่ส่วนรีวิว */}
+          {p.rating_count > 0 && (
+            <a href="#reviews" className="-mt-2 flex w-fit items-center gap-2 text-sm text-zinc-600 hover:text-brand">
+              <Stars rating={p.rating_avg} className="size-4" /> {p.rating_avg} ({p.rating_count} {p.rating_count === 1 ? "review" : "reviews"})
+            </a>
+          )}
           <p className="text-3xl font-semibold">{formatPrice(p.price, p.currency)}</p>
           {p.description && <p className="leading-relaxed text-zinc-600">{p.description}</p>}
 
@@ -86,8 +96,11 @@ async function ProductDetail({ code }) {
             <dd>{p.uom}</dd>
           </dl>
 
-          {/* ปุ่มใส่ตะกร้า (Client Component) — ไม่มีราคาใน ERPNext → ปุ่มกดไม่ได้ */}
-          <AddToCartButton product={p} variant="full" />
+          {/* ปุ่มใส่ตะกร้า + ถูกใจ (Client Component) — ไม่มีราคาใน ERPNext → ปุ่มตะกร้ากดไม่ได้ */}
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <AddToCartButton product={p} variant="full" />
+            <WishlistButton product={p} variant="full" />
+          </div>
 
           <ul className="space-y-2 border-t pt-5 text-sm text-zinc-600">
             <li className="flex items-center gap-2"><Truck className="size-4 text-brand" /> Free shipping on orders over ฿1,500</li>
@@ -95,6 +108,17 @@ async function ProductDetail({ code }) {
             <li className="flex items-center gap-2"><ShieldCheck className="size-4 text-brand" /> Secure checkout</li>
           </ul>
         </div>
+      </section>
+
+      {/* ---------- รีวิว: รายการ (Server) + ฟอร์ม (Client) ---------- */}
+      <section id="reviews" className="scroll-mt-4 grid grid-cols-1 gap-6 md:grid-cols-[1fr_360px]">
+        <div>
+          <h2 className="mb-4 text-xl font-semibold">Customer Reviews</h2>
+          <Suspense fallback={<div className="h-24 animate-pulse rounded-2xl bg-zinc-100" />}>
+            <ReviewList code={p.code} />
+          </Suspense>
+        </div>
+        <ReviewForm code={p.code} />
       </section>
 
       {/* ---------- สินค้าในหมวดเดียวกัน (Suspense แยก → หน้าหลักขึ้นก่อนไม่ต้องรอส่วนนี้) ---------- */}

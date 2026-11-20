@@ -20,7 +20,7 @@ from pydantic import BaseModel                  # ใช้กำหนดหน
 
 from config import settings                     # ค่าตั้งค่าจาก .env
 from db import client, db                       # ตัวเชื่อม MongoDB
-from routes import customers, local_customers, orders, products, sync  # routes แยกไฟล์
+from routes import customers, local_customers, newsletter, orders, products, reviews, sync  # routes แยกไฟล์
 
 # ใช้ logger ของ uvicorn → ข้อความจะขึ้นใน "docker compose logs api"
 log = logging.getLogger("uvicorn.error")
@@ -50,6 +50,9 @@ async def auto_sync_loop():
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """โค้ดก่อน yield = ตอน API เริ่ม, หลัง yield = ตอน API ปิด"""
+    # index = ทำให้ค้นหาเร็ว (เหมือนสารบัญหนังสือ) — สร้างซ้ำได้ ถ้ามีแล้ว MongoDB ข้ามให้
+    await db.reviews.create_index([("product_code", 1), ("created_at", -1)])
+
     task = None
     if settings.sync_interval > 0:  # SYNC_INTERVAL=0 → ปิด auto-sync
         # create_task = สั่งให้ทำงานเบื้องหลัง ไม่ต้องรอให้จบ
@@ -71,6 +74,8 @@ app.include_router(sync.router)             # /sync           → ERPNext → Mo
 app.include_router(local_customers.router)  # /customers      → อ่านจาก MongoDB
 app.include_router(products.router)         # /products, /categories → หน้าร้าน (อ่านจาก MongoDB)
 app.include_router(orders.router)           # /orders → สั่งซื้อ = Sales Order ใน ERPNext
+app.include_router(reviews.router)          # /products/{code}/reviews, /reviews/latest → MongoDB
+app.include_router(newsletter.router)       # /newsletter → MongoDB
 
 # CORS: browser จะไม่ยอมให้เว็บ localhost:3000 เรียก API ที่ localhost:8000
 # (คนละ port = คนละ origin) ถ้า API ไม่บอกว่า "อนุญาต" → ตั้งไว้ตรงนี้

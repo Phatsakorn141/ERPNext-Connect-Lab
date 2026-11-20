@@ -2,10 +2,11 @@
 import Link from "next/link";
 import Form from "next/form"; // ฟอร์มแบบ GET ที่เปลี่ยนหน้าโดยไม่โหลดใหม่ทั้งหน้า
 import {
-  ChevronDown, Heart, LayoutGrid, RotateCcw, Search,
+  ChevronDown, LayoutGrid, RotateCcw, Search,
   ShieldCheck, ShoppingBag, Truck, User,
 } from "lucide-react";
 import CartLink from "@/components/cart/CartLink";
+import WishlistLink from "@/components/wishlist/WishlistLink";
 
 // เมนูหลัก: [ชื่อ, ลิงก์]  (href "#" = ยังไม่มีหน้า)
 const NAV = [
@@ -13,17 +14,12 @@ const NAV = [
   ["Brands", "#"], ["Inspiration", "#"], ["Track Order", "#"],
 ];
 
-// ปุ่มไอคอนพร้อมตัวเลขแจ้งเตือน (ใช้กับ Wishlist / Cart)
-function IconButton({ icon: Icon, label, count }) {
+// ปุ่มไอคอน (Account — ยังไม่มีระบบ login)
+function IconButton({ icon: Icon, label }) {
   return (
     <button className="relative flex flex-col items-center gap-0.5 text-xs text-zinc-700 hover:text-brand">
       <Icon className="size-5" />
       <span className="hidden sm:block">{label}</span>
-      {count !== undefined && (
-        <span className="absolute -top-1.5 right-0 grid size-4 place-items-center rounded-full bg-brand text-[10px] text-white sm:right-1">
-          {count}
-        </span>
-      )}
     </button>
   );
 }
@@ -69,7 +65,7 @@ export default function Header({ active = "Home" }) {
 
         <div className="ml-auto flex items-center gap-5 md:ml-0">
           <IconButton icon={User} label="Account" />
-          <IconButton icon={Heart} label="Wishlist" count={0} />
+          <WishlistLink /> {/* Client Component: จำนวนมาจาก wishlist ใน localStorage */}
           <CartLink /> {/* Client Component: ตัวเลขมาจากตะกร้าใน localStorage */}
         </div>
       </div>

@@ -1,6 +1,7 @@
 // กล่องสีเขียว "Stay in the Loop": สมัครรับข่าวทางอีเมล
-// เฟส 6 จะส่งอีเมลไปเก็บใน MongoDB (ตอนนี้ยังเป็นหน้าตาอย่างเดียว)
-import { Lock, Mail } from "lucide-react";
+// ส่วนนี้เป็น Server Component — เฉพาะฟอร์ม (NewsletterForm) ทำงานใน browser
+import { Mail } from "lucide-react";
+import NewsletterForm from "./NewsletterForm";
 
 export default function Newsletter() {
   return (
@@ -18,19 +19,7 @@ export default function Newsletter() {
         </div>
       </div>
 
-      <div className="space-y-2">
-        <div className="flex min-w-0 rounded-full bg-white p-1">
-          <input type="email" placeholder="Enter your email address"
-            className="min-w-0 flex-1 bg-transparent px-4 text-sm text-zinc-900 outline-none" />
-          {/* type="button" = ยังไม่ส่งข้อมูลจริง (กันหน้ารีโหลด) */}
-          <button type="button" className="rounded-full bg-brand px-5 py-2 text-sm hover:bg-brand-light">
-            Subscribe
-          </button>
-        </div>
-        <p className="flex items-center gap-1 pl-4 text-xs text-white/60">
-          <Lock className="size-3" /> We respect your privacy. Unsubscribe anytime.
-        </p>
-      </div>
+      <NewsletterForm />
     </section>
   );
 }

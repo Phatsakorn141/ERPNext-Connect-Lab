@@ -15,14 +15,7 @@ export default function AddToCartButton({ product, variant = "icon" }) {
   const disabled = product.price == null; // ไม่มีราคา → ขายไม่ได้
 
   function handleClick() {
-    cart.add({
-      code: product.code,
-      item_name: product.item_name,
-      price: product.price,
-      currency: product.currency,
-      item_group: product.item_group,
-      image: product.image,
-    });
+    cart.add(product); // cart.add เลือกเก็บเฉพาะ field ที่ใช้เอง (productSnapshot)
     setAdded(true);
     setTimeout(() => setAdded(false), 1500);
   }

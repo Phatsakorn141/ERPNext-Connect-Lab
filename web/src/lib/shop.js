@@ -58,5 +58,15 @@ export async function getOrder(token) {
   }
 }
 
+// รีวิวของสินค้า (ใหม่ → เก่า)
+export async function getReviews(code) {
+  return get(`/products/${encodeURIComponent(code)}/reviews`);
+}
+
+// รีวิวดีๆ ล่าสุด + คะแนนเฉลี่ยทั้งร้าน → { average, count, items }
+export async function getLatestReviews(limit = 3) {
+  return get(`/reviews/latest?limit=${limit}`);
+}
+
 // formatPrice ย้ายไป lib/format.js (ให้ Client Component ใช้ได้ด้วย) — export ต่อให้ไฟล์เดิมยังใช้ได้
 export { formatPrice } from "./format";
