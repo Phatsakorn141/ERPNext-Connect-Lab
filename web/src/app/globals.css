@@ -1,26 +1,31 @@
 @import "tailwindcss";
 
+/* ===== สีหลักของเว็บ (ใช้ใน Tailwind เป็น bg-brand, text-brand, bg-cream ฯลฯ) ===== */
 :root {
   --background: #ffffff;
-  --foreground: #171717;
+  --foreground: #1c1f1d;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+
+  /* เขียวเข้มของร้าน (ปุ่ม, header, แถบสมัครข่าว) */
+  --color-brand: #1f3a2c;
+  --color-brand-light: #2f5a43;
+  /* พื้นครีม / เขียวอ่อน สำหรับ banner และการ์ด */
+  --color-cream: #f4efe6;
+  --color-mint: #e7efe9;
+  /* ป้ายลดราคา */
+  --color-sale: #e5533d;
+
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --font-serif: var(--font-playfair); /* หัวข้อใหญ่แบบ serif */
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
 }

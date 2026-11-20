@@ -20,7 +20,7 @@ from pydantic import BaseModel                  # ใช้กำหนดหน
 
 from config import settings                     # ค่าตั้งค่าจาก .env
 from db import client, db                       # ตัวเชื่อม MongoDB
-from routes import customers, local_customers, sync  # routes แยกไฟล์
+from routes import customers, local_customers, orders, products, sync  # routes แยกไฟล์
 
 # ใช้ logger ของ uvicorn → ข้อความจะขึ้นใน "docker compose logs api"
 log = logging.getLogger("uvicorn.error")
@@ -32,10 +32,14 @@ async def auto_sync_loop():
     """วนดึงลูกค้าจาก ERPNext ทุก sync_interval วินาที (ทำงานเบื้องหลังตลอดเวลา)"""
     while True:  # วนไม่รู้จบ จนกว่า API จะปิด (task.cancel())
         try:
-            # เรียกฟังก์ชันเดียวกับที่ POST /sync/customers ใช้
+            # เรียกฟังก์ชันเดียวกับที่ POST /sync/customers และ /sync/products ใช้
             result = await sync.sync_customers(full=False)
             if result["synced"]:  # log เฉพาะตอนมีข้อมูลใหม่ (ไม่ให้ log รก)
                 log.info("auto-sync: ได้ลูกค้าใหม่/แก้ไข %s ราย", result["synced"])
+            result = await sync.sync_products(full=False)
+            changed = result["items"]["synced"] + result["prices"]["synced"]
+            if changed:
+                log.info("auto-sync: สินค้า/ราคา เปลี่ยน %s รายการ", changed)
         except Exception as e:
             # ERPNext ล่ม / เน็ตหลุด → แค่ log ไว้ รอบหน้าลองใหม่ (ไม่ให้ loop ตาย)
             log.warning("auto-sync ล้มเหลว: %s", e)
@@ -65,6 +69,8 @@ app = FastAPI(title="TestERP Connect API", lifespan=lifespan)
 app.include_router(customers.router)        # /erp/customers  → ERPNext ตรงๆ
 app.include_router(sync.router)             # /sync           → ERPNext → MongoDB
 app.include_router(local_customers.router)  # /customers      → อ่านจาก MongoDB
+app.include_router(products.router)         # /products, /categories → หน้าร้าน (อ่านจาก MongoDB)
+app.include_router(orders.router)           # /orders → สั่งซื้อ = Sales Order ใน ERPNext
 
 # CORS: browser จะไม่ยอมให้เว็บ localhost:3000 เรียก API ที่ localhost:8000
 # (คนละ port = คนละ origin) ถ้า API ไม่บอกว่า "อนุญาต" → ตั้งไว้ตรงนี้

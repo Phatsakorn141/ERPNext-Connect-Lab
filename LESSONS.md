@@ -20,6 +20,18 @@ Browser → Next.js (web/, JavaScript)   หน้าเว็บอย่าง
 | 5.1 | Auto-sync (polling ทุก `SYNC_INTERVAL` วินาที) | ✅ |
 | 6 | Next.js หน้า `/customers` + `POST /erp/customers` สร้างลูกค้าใน ERPNext | ✅ |
 
+## Pskant Shop (หน้าร้าน)
+| เฟส | หัวข้อ | สถานะ |
+|---|---|---|
+| 1 | หน้าตา UI ตามแบบ (ข้อมูลปลอม `web/src/data/mock.js`) | ✅ |
+| 2 | Sync Item + Item Price + Item Group → MongoDB, API `/products`, `/categories` | ✅ |
+| 3 | หน้าร้านแสดงสินค้าจริง (฿) + หน้า `/shop` ค้นหา `?q=` + กรองหมวด `?category=` | ✅ |
+| 4 | หน้ารายละเอียดสินค้า `/product/[code]` + สินค้าที่เกี่ยวข้อง + หน้า 404 | ✅ |
+| 5 | ตะกร้า (localStorage) + `/cart` Checkout → `POST /orders` → Customer + Address + Sales Order (Draft) + หน้า `/order/[token]` | ✅ |
+| 6 | รีวิว / Wishlist / Newsletter | ⬜ |
+
+สร้างสินค้าตัวอย่างใน ERPNext (เขียนข้อมูลจริง!): `docker compose exec api python -m scripts.seed_items`
+
 ## คำสั่ง Docker ที่ใช้บ่อย (รันที่โฟลเดอร์ TestERP Connect)
 | คำสั่ง | ทำอะไร |
 |---|---|

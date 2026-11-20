@@ -1,32 +1,47 @@
-// app/page.js — หน้าแรก (URL: /)
-// ไม่มี "use client" → เป็น Server Component (สร้าง HTML ที่ server ส่งให้ browser)
-// ใช้ได้เพราะหน้านี้ไม่มีปุ่ม/state อะไร มีแค่ลิงก์
+// app/page.js — หน้าแรกของร้าน Pskant Shop (URL: /)
+// ไม่มี "use client" → เป็น Server Component (สร้าง HTML ที่ server)
+//
+// ข้อมูลจริง (จาก FastAPI → MongoDB): หมวดหมู่, สินค้าแนะนำ
+// ยังเป็นข้อมูลปลอม (data/mock.js):   banner โปร, รีวิวลูกค้า
 
-import Link from "next/link"; // ลิงก์ภายในเว็บ (เปลี่ยนหน้าไม่ต้องโหลดใหม่ทั้งหน้า)
+import { Suspense } from "react";
+import Header from "@/components/shop/Header";
+import Hero from "@/components/shop/Hero";
+import CategoryIcons from "@/components/shop/CategoryIcons";
+import TopPicks from "@/components/shop/TopPicks";
+import { ProductGridSkeleton } from "@/components/shop/ProductGrid";
+import PromoBanners from "@/components/shop/PromoBanners";
+import Testimonials from "@/components/shop/Testimonials";
+import Newsletter from "@/components/shop/Newsletter";
+import FeatureBar from "@/components/shop/FeatureBar";
+import { promos, testimonials } from "@/data/mock";
 
 export default function Home() {
   return (
-    <main className="mx-auto w-full max-w-2xl p-6 space-y-6">
-      <h1 className="text-3xl font-semibold">TestERP Connect</h1>
-      <p className="text-zinc-600 dark:text-zinc-400">
-        Next.js → FastAPI → MongoDB / ERPNext
-      </p>
+    <>
+      <Header active="Home" />
+      {/* space-y-12 = เว้นระยะห่างระหว่างแต่ละส่วน */}
+      <main className="mx-auto w-full max-w-7xl space-y-12 px-4 py-6">
+        <Hero />
 
-      <ul className="space-y-2">
-        <li>
-          {/* หน้าภายในเว็บ → ใช้ <Link> */}
-          <Link href="/customers" className="text-blue-600 hover:underline">
-            ลูกค้า
-          </Link>{" "}
-          — รายชื่อจาก MongoDB, Sync, สร้างลูกค้าใน ERPNext
-        </li>
-        <li>
-          {/* เว็บอื่น (คนละ port) → ใช้ <a> ธรรมดา */}
-          <a href="http://localhost:8000/docs" className="text-blue-600 hover:underline">
-            API Docs (FastAPI)
-          </a>
-        </li>
-      </ul>
-    </main>
+        {/* Suspense: ส่วนที่ต้องรอข้อมูลจาก API
+            → ส่งหน้าเว็บส่วนอื่นไปก่อน แสดง fallback ระหว่างรอ แล้วค่อยเติมข้อมูลจริงตามมา */}
+        <Suspense fallback={<div className="h-24" />}>
+          <CategoryIcons />
+        </Suspense>
+
+        {/* id="top-picks" → ปุ่ม Shop Now ใน Hero เลื่อนลงมาที่นี่ */}
+        <section id="top-picks" className="scroll-mt-4">
+          <Suspense fallback={<ProductGridSkeleton />}>
+            <TopPicks />
+          </Suspense>
+        </section>
+
+        <PromoBanners promos={promos} />
+        <Testimonials items={testimonials} />
+        <Newsletter />
+        <FeatureBar />
+      </main>
+    </>
   );
 }
