@@ -8,6 +8,7 @@ import { CircleCheck } from "lucide-react";
 import Header from "@/components/shop/Header";
 import FeatureBar from "@/components/shop/FeatureBar";
 import { ApiError } from "@/components/shop/ProductGrid";
+import PaymentBox from "@/components/payment/PaymentBox";
 import { formatPrice, getOrder } from "@/lib/shop";
 
 export const metadata = { title: "Order Confirmed — Pskant Shop" };
@@ -29,7 +30,7 @@ export default function OrderPage({ params }) {
 async function OrderDetail({ token }) {
   const { status, order } = await getOrder(token);
   if (status === "not_found") notFound();
-  if (status === "error") return <ApiError />;
+  if (status === "error") return <ApiError what="your order" />;
 
   return (
     <section className="space-y-6 rounded-3xl border border-zinc-200 p-6 md:p-10">
@@ -68,9 +69,8 @@ async function OrderDetail({ token }) {
         </tfoot>
       </table>
 
-      <p className="text-center text-sm text-zinc-500">
-        Our team will confirm your order soon. Payment on delivery.
-      </p>
+      {/* ชำระเงิน (Client Component): ปุ่มจ่าย / รอผล / จ่ายแล้ว */}
+      <PaymentBox token={token} payment={order.payment} total={order.grand_total} currency={order.currency} />
       <div className="text-center">
         <Link href="/shop" className="inline-block rounded-lg bg-brand px-6 py-3 text-sm font-medium text-white hover:bg-brand-light">
           Continue Shopping

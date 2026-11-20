@@ -81,5 +81,6 @@ export function productSnapshot(p) {
     currency: p.currency,
     item_group: p.item_group,
     image: p.image,
+    stock_qty: p.stock_qty, // ใช้จำกัดจำนวนในตะกร้า (ตัวเลขตอนกดใส่ — API เช็กสดอีกทีตอนสั่ง)
   };
 }

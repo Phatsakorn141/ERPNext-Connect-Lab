@@ -34,10 +34,11 @@ export function ProductGridSkeleton({ count = 5 }) {
   );
 }
 
-export function ApiError() {
+// what = โหลดอะไรไม่ได้ (หน้าคำสั่งซื้อส่ง "your order")
+export function ApiError({ what = "products" }) {
   return (
     <p className="rounded-2xl bg-red-50 p-6 text-center text-sm text-red-700">
-      Could not load products. Is the API running? (<code>docker compose up -d</code>)
+      Could not load {what}. Is the API running? (<code>docker compose up -d</code>)
     </p>
   );
 }

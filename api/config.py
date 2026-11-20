@@ -23,6 +23,14 @@ class Settings(BaseSettings):
     erp_api_key: str = ""                   # API Key    (ความลับ อยู่ใน .env เท่านั้น)
     erp_api_secret: str = ""                # API Secret (ความลับ อยู่ใน .env เท่านั้น)
     erp_price_list: str = "Standard Selling"  # ราคาขายของหน้าร้านมาจาก Price List นี้
+    erp_warehouse: str = ""  # คลังที่หน้าร้านขายของออก ("" = หาคลังชื่อ "Stores - ..." ให้เอง)
+
+    # ---------- ชำระเงิน (จำลอง Payment Gateway "PskPay" — ดู routes/mockpay.py) ----------
+    erp_payment_mode: str = "Pskant Online"  # Mode of Payment ใน ERPNext (scripts/setup_payment.py สร้างให้)
+    pskpay_secret: str = "dev-only-change-me"  # กุญแจลับที่ร้านกับ gateway รู้ 2 ฝ่าย (ความลับ อยู่ใน .env)
+    pskpay_url: str = "http://localhost:8000/mockpay"  # ที่อยู่ API ของ gateway
+    web_url: str = "http://localhost:3000"   # หน้าเว็บ (gateway พาลูกค้ากลับมาที่นี่)
+    payment_webhook_url: str = "http://localhost:8000/payments/webhook"  # gateway ส่งผลจ่ายเงินมาที่นี่
 
     # ---------- Login ----------
     session_days: int = 7         # อยู่ในระบบได้กี่วันก่อนต้อง login ใหม่

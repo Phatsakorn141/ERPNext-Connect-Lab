@@ -30,8 +30,13 @@ Browser → Next.js (web/, JavaScript)   หน้าเว็บอย่าง
 | 5 | ตะกร้า (localStorage) + `/cart` Checkout → `POST /orders` → Customer + Address + Sales Order (Draft) + หน้า `/order/[token]` | ✅ |
 | 6 | รีวิว + คะแนนเฉลี่ย (MongoDB) / Wishlist (localStorage) / Newsletter (MongoDB) | ✅ |
 | 7 | Login: `/register` `/login` `/account` — session cookie (httpOnly) + argon2, สมัคร = Customer ใน ERPNext, ประวัติสั่งซื้อ + สถานะจริงจาก ERPNext | ✅ |
+| 8 | สต็อก: sync Bin → `stock_qty`, ป้าย "Only N left"/"Out of stock", เช็กสต็อกสดกับ ERPNext ตอนสั่งซื้อ (409) | ✅ |
+| 9 | ชำระเงิน: gateway จำลอง PskPay (`/pskpay/[id]`) → webhook มีลายเซ็น HMAC → Submit SO + Sales Invoice + Payment Entry | ✅ |
+| 10 | Webhook ERPNext → FastAPI (แทน polling) | ⏳ |
 
 สร้างสินค้าตัวอย่างใน ERPNext (เขียนข้อมูลจริง!): `docker compose exec api python -m scripts.seed_items`
+รับของเข้าคลัง (เขียนข้อมูลจริง!): `docker compose exec api python -m scripts.seed_stock`
+ตั้งบัญชีรับเงินออนไลน์ (เขียนข้อมูลจริง!): `docker compose exec api python -m scripts.setup_payment`
 
 ## คำสั่ง Docker ที่ใช้บ่อย (รันที่โฟลเดอร์ TestERP Connect)
 | คำสั่ง | ทำอะไร |

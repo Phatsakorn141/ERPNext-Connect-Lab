@@ -8,6 +8,7 @@ import AddToCartButton from "@/components/cart/AddToCartButton";
 import WishlistButton from "@/components/wishlist/WishlistButton";
 import { categoryStyle } from "@/lib/categoryStyle";
 import { formatPrice } from "@/lib/format";
+import { stockInfo } from "@/lib/stock";
 
 // ดาว 5 ดวง: เต็มตามคะแนน (ปัดเศษ) ที่เหลือเป็นดาวเทา
 export function Stars({ rating, className = "size-3.5" }) {
@@ -24,6 +25,7 @@ export function Stars({ rating, className = "size-3.5" }) {
 export default function ProductCard({ product: p }) {
   const style = categoryStyle(p.item_group); // emoji + สีพื้น ตามหมวด (ใช้ตอนไม่มีรูป)
   const href = `/product/${encodeURIComponent(p.code)}`; // หน้ารายละเอียดสินค้า
+  const stock = stockInfo(p);
 
   return (
     // relative → ให้ปุ่มหัวใจลอยอยู่มุมขวาบนของการ์ดได้
@@ -37,6 +39,13 @@ export default function ProductCard({ product: p }) {
           <img src={p.image} alt={p.item_name} className="size-full object-cover transition group-hover:scale-105" />
         ) : (
           <span className="transition group-hover:scale-110" aria-hidden>{style.emoji}</span>
+        )}
+        {/* ป้ายสต็อก: หมด (เทา) / เหลือน้อย (ส้ม) — ของเยอะไม่ต้องแสดง */}
+        {(!stock.inStock || stock.low) && (
+          <span className={`absolute bottom-2 left-2 rounded-full px-2 py-0.5 text-xs font-medium ${
+            stock.inStock ? "bg-amber-100 text-amber-800" : "bg-zinc-800 text-white"}`}>
+            {stock.label}
+          </span>
         )}
       </Link>
 

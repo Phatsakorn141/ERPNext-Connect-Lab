@@ -9,6 +9,7 @@
   Item        → products     (สินค้า)
   Item Price  → products     (เติมราคาลงในสินค้าตัวเดียวกัน)
   Item Group  → categories   (หมวดหมู่)
+  Bin         → products     (เติม stock_qty = จำนวนที่ขายได้ ดู stock.py)
 
 sync_state = จำว่าแต่ละ DocType sync ถึง modified ไหนแล้ว  ({_id: "Customer", last_modified: ...})
 """
@@ -20,6 +21,7 @@ from fastapi import APIRouter
 from pymongo import UpdateOne  # คำสั่ง update 1 รายการ (ใช้รวมกันใน bulk_write)
 
 import erpnext
+import stock
 from config import settings
 from db import db
 
@@ -143,6 +145,7 @@ def _item_doc(row):
         "description": row["description"],
         "image": _image_url(row["image"]),
         "uom": row["stock_uom"],               # หน่วยนับ เช่น Nos, Kg
+        "is_stock_item": bool(row["is_stock_item"]),  # True = นับสต็อก (ของหมด = ขายไม่ได้)
         "disabled": bool(row["disabled"]),
         "erp_modified": row["modified"],
     }
@@ -165,7 +168,7 @@ async def sync_products(full: bool = False):
         items = await _sync(
             "Item",
             ["name", "item_name", "item_group", "description", "image",
-             "stock_uom", "disabled", "modified"],
+             "stock_uom", "is_stock_item", "disabled", "modified"],
             db.products, _item_doc, full,
         )
         prices = await _sync(
@@ -182,10 +185,33 @@ async def sync_products(full: bool = False):
             ["name", "parent_item_group", "is_group", "modified"],
             db.categories, _group_doc, full=True,
         )
+        stock_result = await _sync_stock()
     return {
         "mode": "full" if full else "incremental",
-        "items": items, "prices": prices, "categories": groups,
+        "items": items, "prices": prices, "categories": groups, "stock": stock_result,
     }
+
+
+async def _sync_stock():
+    """เติม stock_qty ลงสินค้า — ดึง Bin ทั้งหมดทุกรอบ (ไม่ใช้ modified)
+
+    ทำไมไม่ incremental: ERPNext อัปเดตจำนวนใน Bin โดยไม่แตะ modified เสมอไป
+    และ Bin มีแค่ 1 แถวต่อสินค้า → ดึงทั้งหมดก็ยังเร็ว
+    """
+    qty = await stock.available()
+    ops = []
+    async for p in db.products.find({}, {"is_stock_item": 1}):
+        if p.get("is_stock_item"):
+            # สินค้านับสต็อก ไม่มีแถว Bin = ไม่เคยมีของ → 0
+            ops.append(UpdateOne({"_id": p["_id"]}, {"$set": {"stock_qty": qty.get(p["_id"], 0)}}))
+        else:
+            # ไม่นับสต็อก (เช่นบริการ) → ไม่มี stock_qty = ขายได้ไม่จำกัด
+            ops.append(UpdateOne({"_id": p["_id"]}, {"$unset": {"stock_qty": ""}}))
+    if ops:
+        await db.products.bulk_write(ops)
+    await db.sync_state.update_one(
+        {"_id": "Bin"}, {"$set": {"synced_at": datetime.now(timezone.utc)}}, upsert=True)
+    return {"warehouse": await stock.warehouse(), "items_in_stock": sum(1 for v in qty.values() if v > 0)}
 
 
 # ==================== สถานะ ====================

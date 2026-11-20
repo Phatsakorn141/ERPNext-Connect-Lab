@@ -8,6 +8,7 @@
 "use client";
 
 import { createLocalStore, productSnapshot } from "./localStore";
+import { stockInfo } from "./stock";
 
 const store = createLocalStore("pskant-cart");
 
@@ -19,13 +20,16 @@ export function useCart() {
     count: items.reduce((sum, i) => sum + i.qty, 0),
     subtotal: items.reduce((sum, i) => sum + i.price * i.qty, 0),
 
-    // เพิ่มสินค้า (มีอยู่แล้ว → บวกจำนวน, สูงสุด 99)
+    // เพิ่มสินค้า (มีอยู่แล้ว → บวกจำนวน, สูงสุด = สต็อกหรือ 99)
+    // ข้อมูลสินค้าล่าสุด (product) ทับ snapshot เดิม → stock_qty ใหม่ล่าสุดเสมอ
     add(product, qty = 1) {
+      const max = stockInfo(product).max;
       const found = items.find((i) => i.code === product.code);
       store.save(
         found
-          ? items.map((i) => (i.code === product.code ? { ...i, qty: Math.min(99, i.qty + qty) } : i))
-          : [...items, { ...productSnapshot(product), qty }],
+          ? items.map((i) => (i.code === product.code
+            ? { ...productSnapshot(product), qty: Math.min(max, i.qty + qty) } : i))
+          : [...items, { ...productSnapshot(product), qty: Math.min(max, qty) }],
       );
     },
 
@@ -34,7 +38,7 @@ export function useCart() {
       store.save(
         qty <= 0
           ? items.filter((i) => i.code !== code)
-          : items.map((i) => (i.code === code ? { ...i, qty: Math.min(99, qty) } : i)),
+          : items.map((i) => (i.code === code ? { ...i, qty: Math.min(stockInfo(i).max || 99, qty) } : i)),
       );
     },
 

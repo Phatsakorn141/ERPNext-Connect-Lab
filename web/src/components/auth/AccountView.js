@@ -101,6 +101,7 @@ export default function AccountView() {
                   <span className={`rounded-full px-2 py-0.5 text-xs ${STATUS_STYLE[o.status] || "bg-zinc-100"}`}>{o.status}</span>
                   <span className="text-sm text-zinc-500">{new Date(o.created_at).toLocaleDateString("th-TH")}</span>
                   <span className="text-sm text-zinc-500">{o.items_count} items</span>
+                  {o.payment_status === "paid" && <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs text-green-800">Paid</span>}
                   <span className="ml-auto font-semibold">{formatPrice(o.grand_total, o.currency)}</span>
                 </Link>
               </li>

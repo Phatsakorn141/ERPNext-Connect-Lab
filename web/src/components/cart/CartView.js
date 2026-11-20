@@ -10,6 +10,7 @@ import { useAuth } from "@/lib/auth";
 import { useCart } from "@/lib/cart";
 import { categoryStyle } from "@/lib/categoryStyle";
 import { formatPrice } from "@/lib/format";
+import { stockInfo } from "@/lib/stock";
 
 // ช่องในฟอร์ม: [ชื่อ field, label, type, placeholder]
 const FIELDS = [
@@ -73,6 +74,7 @@ export default function CartView() {
         <ul className="divide-y rounded-2xl border border-zinc-200">
           {cart.items.map((item) => {
             const style = categoryStyle(item.item_group);
+            const max = stockInfo(item).max || 99;
             return (
               <li key={item.code} className="flex items-center gap-4 p-4">
                 {/* รูป / emoji */}
@@ -99,7 +101,8 @@ export default function CartView() {
                     </button>
                     <span className="w-6 text-center text-sm" aria-live="polite">{item.qty}</span>
                     <button type="button" aria-label="Increase" onClick={() => cart.setQty(item.code, item.qty + 1)}
-                      className="grid size-7 place-items-center rounded-full border hover:border-brand">
+                      disabled={item.qty >= max} // ไม่ให้เกินสต็อก
+                      className="grid size-7 place-items-center rounded-full border hover:border-brand disabled:opacity-30">
                       <Plus className="size-3" />
                     </button>
                     <button type="button" aria-label={`Remove ${item.item_name}`} onClick={() => cart.remove(item.code)}
@@ -156,7 +159,7 @@ export default function CartView() {
             className="w-full rounded-xl bg-brand py-3 font-medium text-white hover:bg-brand-light disabled:opacity-50">
             {busy ? "Placing order..." : "Place Order"}
           </button>
-          <p className="text-center text-xs text-zinc-500">Pay on delivery · Final total is confirmed by our team</p>
+          <p className="text-center text-xs text-zinc-500">Pay online on the next page, or pay on delivery</p>
         </form>
       </aside>
     </div>

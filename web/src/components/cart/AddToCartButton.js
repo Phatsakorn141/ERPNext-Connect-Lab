@@ -5,6 +5,7 @@
 import { useState } from "react";
 import { Check, ShoppingCart } from "lucide-react";
 import { useCart } from "@/lib/cart";
+import { stockInfo } from "@/lib/stock";
 
 // product: { code, item_name, price, currency, item_group, image }
 // variant: "icon" = ปุ่มกลมเล็ก (การ์ดสินค้า), "full" = ปุ่มใหญ่มีข้อความ (หน้าสินค้า)
@@ -12,7 +13,8 @@ export default function AddToCartButton({ product, variant = "icon" }) {
   const cart = useCart();
   const [added, setAdded] = useState(false); // โชว์ ✓ แป๊บหนึ่งหลังกด
 
-  const disabled = product.price == null; // ไม่มีราคา → ขายไม่ได้
+  const { inStock } = stockInfo(product);
+  const disabled = product.price == null || !inStock; // ไม่มีราคา / ของหมด → ขายไม่ได้
 
   function handleClick() {
     cart.add(product); // cart.add เลือกเก็บเฉพาะ field ที่ใช้เอง (productSnapshot)
@@ -26,7 +28,7 @@ export default function AddToCartButton({ product, variant = "icon" }) {
     return (
       <button onClick={handleClick} disabled={disabled}
         className="flex items-center justify-center gap-2 rounded-xl bg-brand px-6 py-3 font-medium text-white hover:bg-brand-light disabled:opacity-50 md:w-fit">
-        <Icon className="size-5" /> {added ? "Added to Cart" : "Add to Cart"}
+        <Icon className="size-5" /> {!inStock ? "Out of Stock" : added ? "Added to Cart" : "Add to Cart"}
       </button>
     );
   }

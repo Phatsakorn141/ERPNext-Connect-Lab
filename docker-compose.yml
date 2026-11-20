@@ -55,6 +55,7 @@ services:
       ERP_API_KEY: ${ERP_API_KEY}
       ERP_API_SECRET: ${ERP_API_SECRET}
       SYNC_INTERVAL: ${SYNC_INTERVAL:-60}   # auto-sync ทุกกี่วินาที (0 = ปิด)
+      PSKPAY_SECRET: ${PSKPAY_SECRET}       # กุญแจลับของ payment gateway จำลอง
       WATCHFILES_FORCE_POLLING: "true"   # ให้ reload ทำงานบน Windows
     ports:
       - "8000:8000"

@@ -32,6 +32,7 @@ async def my_orders(user: dict = Depends(require_user)):
             "token": o["_id"],  # ใช้เปิดหน้า /order/<token>
             "order_no": o["order_no"],
             "status": live.get(o["order_no"], o["status"]),
+            "payment_status": (o.get("payment") or {}).get("status", "unpaid"),  # จ่ายออนไลน์แล้วหรือยัง
             "grand_total": o["grand_total"],
             "currency": o["currency"],
             "items_count": sum(i["qty"] for i in o["items"]),

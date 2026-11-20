@@ -4,10 +4,11 @@ POST /orders          ตะกร้า + ข้อมูลลูกค้า 
                       แล้วเก็บสรุปคำสั่งซื้อไว้ใน MongoDB
 GET  /orders/{token}  หน้ายืนยันคำสั่งซื้อ (อ่านจาก MongoDB)
 
-หลักความปลอดภัย 2 ข้อ:
+หลักความปลอดภัย 3 ข้อ:
 1. ไม่เชื่อราคาจาก browser  → ราคาคิดใหม่จาก MongoDB (ที่ sync มาจาก ERPNext) เสมอ
 2. ไม่ใช้เลขที่ order ใน URL → เลข SAL-ORD-2026-00001 เดาง่าย ใครก็ไล่ดูข้อมูลคนอื่นได้
                                ใช้ token สุ่มยาวๆ แทน
+3. สต็อกเช็กสดกับ ERPNext   → ตัวเลขใน MongoDB อาจช้าไป 1 รอบ sync
 """
 
 import secrets
@@ -17,6 +18,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, EmailStr, Field
 
 import erpnext
+import stock
 from auth import optional_user
 from config import settings
 from db import db
@@ -105,6 +107,19 @@ async def create_order(order: OrderIn, user: dict | None = Depends(optional_user
     if unavailable:
         raise HTTPException(400, f"สินค้าไม่พร้อมขาย: {', '.join(unavailable)}")
 
+    # 2.1) สต็อก: ถาม ERPNext สดๆ (เฉพาะสินค้าที่นับสต็อก)
+    stock_codes = [c for c in qty_by_code if products[c].get("is_stock_item")]
+    live = await stock.available(stock_codes)
+    for code in stock_codes:  # อัปเดต MongoDB ด้วยตัวเลขล่าสุด → หน้าร้านแสดงถูกทันที
+        await db.products.update_one({"_id": code}, {"$set": {"stock_qty": live.get(code, 0)}})
+    short = [
+        f"{products[c]['item_name']} (เหลือ {int(live.get(c, 0))})"
+        for c in stock_codes if qty_by_code[c] > live.get(c, 0)
+    ]
+    if short:
+        # 409 Conflict = คำขอถูกต้อง แต่ขัดกับสถานะตอนนี้ (ของไม่พอ)
+        raise HTTPException(409, f"สินค้าไม่พอ: {', '.join(short)}")
+
     # 3) ลูกค้า + ที่อยู่ ใน ERPNext
     #    login อยู่ → ใช้ Customer ที่ผูกกับบัญชี (แม่นกว่าหาจากชื่อ)
     #    guest      → หาจากชื่อ ไม่เจอค่อยสร้าง
@@ -114,6 +129,7 @@ async def create_order(order: OrderIn, user: dict | None = Depends(optional_user
     # 4) ใบสั่งขาย (Sales Order) — สร้างเป็น Draft ให้พนักงานตรวจแล้วกด Submit ใน ERPNext
     today = datetime.now(BANGKOK).date()
     delivery = today + timedelta(days=DELIVERY_DAYS)
+    warehouse = await stock.warehouse()
     so = await erpnext.create_doc("Sales Order", {
         "customer": customer,
         "company": await _company(),
@@ -129,6 +145,7 @@ async def create_order(order: OrderIn, user: dict | None = Depends(optional_user
                 "qty": qty,
                 "rate": products[code]["price"],
                 "delivery_date": delivery.isoformat(),
+                "warehouse": warehouse,  # สินค้านับสต็อกต้องบอกว่าส่งจากคลังไหน
             }
             for code, qty in qty_by_code.items()
         ],
@@ -163,8 +180,12 @@ async def create_order(order: OrderIn, user: dict | None = Depends(optional_user
 
 @router.get("/orders/{token}")
 async def get_order(token: str):
-    """สรุปคำสั่งซื้อ (ไม่ส่งอีเมลออกไป — หน้ายืนยันไม่ต้องใช้)"""
-    doc = await db.orders.find_one({"_id": token}, {"email": 0})  # {"email": 0} = ไม่เอา field นี้
+    """สรุปคำสั่งซื้อ (ไม่ส่งอีเมล/user_id ออกไป — หน้ายืนยันไม่ต้องใช้)
+
+    user_id เป็น ObjectId ของ MongoDB → แปลงเป็น JSON ไม่ได้ (เคยทำให้หน้านี้ error 500)
+    """
+    # {"email": 0, "user_id": 0} = ไม่เอา field เหล่านี้
+    doc = await db.orders.find_one({"_id": token}, {"email": 0, "user_id": 0})
     if not doc:
         raise HTTPException(404, "ไม่พบคำสั่งซื้อ")
     doc.pop("_id")

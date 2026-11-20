@@ -20,7 +20,7 @@ from pydantic import BaseModel                  # ใช้กำหนดหน
 
 from config import settings                     # ค่าตั้งค่าจาก .env
 from db import client, db                       # ตัวเชื่อม MongoDB
-from routes import (account, auth, customers, local_customers, newsletter,  # routes แยกไฟล์
+from routes import (account, auth, customers, local_customers, mockpay, newsletter, payments,  # routes แยกไฟล์
                     orders, products, reviews, sync)
 
 # ใช้ logger ของ uvicorn → ข้อความจะขึ้นใน "docker compose logs api"
@@ -83,6 +83,8 @@ app.include_router(reviews.router)          # /products/{code}/reviews, /reviews
 app.include_router(newsletter.router)       # /newsletter → MongoDB
 app.include_router(auth.router)             # /auth/register, login, logout, me
 app.include_router(account.router)          # /account/orders (ต้อง login)
+app.include_router(payments.router)         # /payments → จ่ายเงิน + ลง Sales Invoice / Payment Entry
+app.include_router(mockpay.router)          # /mockpay  → Payment Gateway จำลอง (แกล้งเป็นบริษัทภายนอก)
 
 # CORS: browser จะไม่ยอมให้เว็บ localhost:3000 เรียก API ที่ localhost:8000
 # (คนละ port = คนละ origin) ถ้า API ไม่บอกว่า "อนุญาต" → ตั้งไว้ตรงนี้

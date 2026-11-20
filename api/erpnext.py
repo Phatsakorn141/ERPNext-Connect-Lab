@@ -4,9 +4,10 @@ ERPNext มี API มาตรฐานให้ทุก DocType (Customer, It
   GET  /api/resource/<DocType>          → ดึงรายการ
   GET  /api/resource/<DocType>/<name>   → ดึง 1 รายการ
   POST /api/resource/<DocType>          → สร้างใหม่
+  PUT  /api/resource/<DocType>/<name>   → แก้ไข
 
 ทุก request ต้องแนบ header:  Authorization: token <API_KEY>:<API_SECRET>
-ไฟล์นี้ทำให้ทั้งหมด → ไฟล์อื่นเรียกแค่ get_list / get_doc / create_doc
+ไฟล์นี้ทำให้ทั้งหมด → ไฟล์อื่นเรียกแค่ get_list / get_doc / create_doc / update_doc
 """
 
 import json                       # แปลง list/dict เป็น JSON string
@@ -107,6 +108,21 @@ async def create_doc(doctype: str, data: dict) -> dict:
     # json=data → httpx แปลง dict เป็น JSON body + ตั้ง Content-Type ให้
     result = await _request("POST", f"/api/resource/{doctype}", json=data)
     return result["data"]
+
+
+async def update_doc(doctype: str, name: str, data: dict) -> dict:
+    """แก้ไขรายการที่มีอยู่ (ส่งเฉพาะ field ที่จะเปลี่ยน)  เช่น update_doc("Item", "HP-001", {"is_stock_item": 1})"""
+    result = await _request("PUT", f"/api/resource/{doctype}/{quote(name, safe='')}", json=data)
+    return result["data"]
+
+
+async def call(method: str, data: dict | None = None):
+    """เรียกฟังก์ชันฝั่ง ERPNext ที่เปิดให้เรียกผ่าน API (whitelisted)  → /api/method/<method>
+
+    เช่น call("erpnext.selling.doctype.sales_order.sales_order.make_sales_invoice", {"source_name": "SAL-ORD-..."})
+    """
+    result = await _request("POST", f"/api/method/{method}", json=data or {})
+    return result.get("message")  # ERPNext ห่อผลไว้ใน {"message": ...}
 
 
 async def get_doc(doctype: str, name: str) -> dict:

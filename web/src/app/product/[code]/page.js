@@ -16,6 +16,7 @@ import FeatureBar from "@/components/shop/FeatureBar";
 import ProductGrid, { ApiError, ProductGridSkeleton } from "@/components/shop/ProductGrid";
 import { categoryStyle } from "@/lib/categoryStyle";
 import { formatPrice, getProduct, getProducts } from "@/lib/shop";
+import { stockInfo } from "@/lib/stock";
 
 // ชื่อแท็บ browser = ชื่อสินค้า  (Next.js เรียกฟังก์ชันนี้ก่อนสร้างหน้า)
 export async function generateMetadata({ params }) {
@@ -46,6 +47,7 @@ async function ProductDetail({ code }) {
   if (status === "error") return <ApiError />;
 
   const style = categoryStyle(p.item_group);
+  const stock = stockInfo(p);
   const categoryHref = `/shop?category=${encodeURIComponent(p.item_group)}`;
 
   return (
@@ -86,6 +88,13 @@ async function ProductDetail({ code }) {
             </a>
           )}
           <p className="text-3xl font-semibold">{formatPrice(p.price, p.currency)}</p>
+          {/* สต็อกจาก ERPNext (Bin) — สินค้าไม่นับสต็อกจะไม่มีบรรทัดนี้ */}
+          {stock.label && (
+            <p className={`-mt-2 flex items-center gap-2 text-sm font-medium ${
+              !stock.inStock ? "text-sale" : stock.low ? "text-amber-700" : "text-brand"}`}>
+              <span className="size-2 rounded-full bg-current" aria-hidden /> {stock.label}
+            </p>
+          )}
           {p.description && <p className="leading-relaxed text-zinc-600">{p.description}</p>}
 
           {/* ข้อมูลจาก ERPNext: รหัสสินค้า (Item Code) + หน่วยนับ (UOM) */}
