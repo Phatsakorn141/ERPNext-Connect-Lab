@@ -24,6 +24,10 @@ class Settings(BaseSettings):
     erp_api_secret: str = ""                # API Secret (ความลับ อยู่ใน .env เท่านั้น)
     erp_price_list: str = "Standard Selling"  # ราคาขายของหน้าร้านมาจาก Price List นี้
 
+    # ---------- Login ----------
+    session_days: int = 7         # อยู่ในระบบได้กี่วันก่อนต้อง login ใหม่
+    cookie_secure: bool = False   # True เมื่อใช้ https (production) — localhost เป็น http จึง False
+
     # ---------- Auto-sync ----------
     sync_interval: int = 60  # ดึงจาก ERPNext ทุกกี่วินาที (0 = ปิด)
 

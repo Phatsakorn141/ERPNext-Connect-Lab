@@ -13,6 +13,8 @@ export async function api(path, options = {}) {
   // fetch = ฟังก์ชันส่ง HTTP request ที่มีใน browser อยู่แล้ว
   const res = await fetch(API_URL + path, {
     headers: { "Content-Type": "application/json" }, // บอก API ว่า body เป็น JSON
+    // ส่ง cookie (session login) ไปกับ request ด้วย — API อยู่คนละ port ต้องสั่งเอง
+    credentials: "include",
     ...options, // method, body ฯลฯ ที่ส่งมา (เขียนทับค่าข้างบนได้)
   });
 

@@ -3,8 +3,9 @@ import Link from "next/link";
 import Form from "next/form"; // ฟอร์มแบบ GET ที่เปลี่ยนหน้าโดยไม่โหลดใหม่ทั้งหน้า
 import {
   ChevronDown, LayoutGrid, RotateCcw, Search,
-  ShieldCheck, ShoppingBag, Truck, User,
+  ShieldCheck, ShoppingBag, Truck,
 } from "lucide-react";
+import AccountLink from "@/components/auth/AccountLink";
 import CartLink from "@/components/cart/CartLink";
 import WishlistLink from "@/components/wishlist/WishlistLink";
 
@@ -13,16 +14,6 @@ const NAV = [
   ["Home", "/"], ["Shop", "/shop"], ["Deals", "#"], ["New Arrivals", "#"],
   ["Brands", "#"], ["Inspiration", "#"], ["Track Order", "#"],
 ];
-
-// ปุ่มไอคอน (Account — ยังไม่มีระบบ login)
-function IconButton({ icon: Icon, label }) {
-  return (
-    <button className="relative flex flex-col items-center gap-0.5 text-xs text-zinc-700 hover:text-brand">
-      <Icon className="size-5" />
-      <span className="hidden sm:block">{label}</span>
-    </button>
-  );
-}
 
 // active = ชื่อเมนูที่กำลังเปิดอยู่ (ขีดเส้นใต้)  เช่น <Header active="Shop" />
 export default function Header({ active = "Home" }) {
@@ -64,7 +55,7 @@ export default function Header({ active = "Home" }) {
         </Form>
 
         <div className="ml-auto flex items-center gap-5 md:ml-0">
-          <IconButton icon={User} label="Account" />
+          <AccountLink /> {/* Client Component: ถาม API ว่า login อยู่ไหม */}
           <WishlistLink /> {/* Client Component: จำนวนมาจาก wishlist ใน localStorage */}
           <CartLink /> {/* Client Component: ตัวเลขมาจากตะกร้าใน localStorage */}
         </div>

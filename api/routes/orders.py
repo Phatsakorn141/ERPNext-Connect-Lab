@@ -13,10 +13,11 @@ GET  /orders/{token}  หน้ายืนยันคำสั่งซื้�
 import secrets
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, EmailStr, Field
 
 import erpnext
+from auth import optional_user
 from config import settings
 from db import db
 from routes.products import VISIBLE
@@ -87,7 +88,8 @@ async def _company() -> str:
 # ==================== POST /orders ====================
 
 @router.post("/orders", status_code=201)
-async def create_order(order: OrderIn):
+async def create_order(order: OrderIn, user: dict | None = Depends(optional_user)):
+    """สั่งซื้อได้ทั้งแบบ login (ใช้ Customer ของบัญชี) และไม่ login (guest)"""
     # 1) รวมรายการที่ซ้ำ (สินค้าเดียวกัน 2 แถว → แถวเดียว qty รวมกัน)
     qty_by_code: dict[str, int] = {}
     for item in order.items:
@@ -104,7 +106,9 @@ async def create_order(order: OrderIn):
         raise HTTPException(400, f"สินค้าไม่พร้อมขาย: {', '.join(unavailable)}")
 
     # 3) ลูกค้า + ที่อยู่ ใน ERPNext
-    customer = await _find_or_create_customer(order.customer.name)
+    #    login อยู่ → ใช้ Customer ที่ผูกกับบัญชี (แม่นกว่าหาจากชื่อ)
+    #    guest      → หาจากชื่อ ไม่เจอค่อยสร้าง
+    customer = user["customer"] if user else await _find_or_create_customer(order.customer.name)
     address = await _create_address(customer, order.customer)
 
     # 4) ใบสั่งขาย (Sales Order) — สร้างเป็น Draft ให้พนักงานตรวจแล้วกด Submit ใน ERPNext
@@ -136,6 +140,7 @@ async def create_order(order: OrderIn):
     await db.orders.insert_one({
         "_id": token,
         "order_no": so["name"],
+        "user_id": user["_id"] if user else None,  # ใช้ดึงประวัติในหน้า /account
         "status": "Draft",
         "customer": customer,
         "customer_name": order.customer.name,

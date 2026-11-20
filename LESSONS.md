@@ -29,6 +29,7 @@ Browser → Next.js (web/, JavaScript)   หน้าเว็บอย่าง
 | 4 | หน้ารายละเอียดสินค้า `/product/[code]` + สินค้าที่เกี่ยวข้อง + หน้า 404 | ✅ |
 | 5 | ตะกร้า (localStorage) + `/cart` Checkout → `POST /orders` → Customer + Address + Sales Order (Draft) + หน้า `/order/[token]` | ✅ |
 | 6 | รีวิว + คะแนนเฉลี่ย (MongoDB) / Wishlist (localStorage) / Newsletter (MongoDB) | ✅ |
+| 7 | Login: `/register` `/login` `/account` — session cookie (httpOnly) + argon2, สมัคร = Customer ใน ERPNext, ประวัติสั่งซื้อ + สถานะจริงจาก ERPNext | ✅ |
 
 สร้างสินค้าตัวอย่างใน ERPNext (เขียนข้อมูลจริง!): `docker compose exec api python -m scripts.seed_items`
 

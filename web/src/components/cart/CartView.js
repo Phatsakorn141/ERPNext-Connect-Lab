@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Minus, Plus, ShoppingBag, Trash2 } from "lucide-react";
 import { api } from "@/lib/api";
+import { useAuth } from "@/lib/auth";
 import { useCart } from "@/lib/cart";
 import { categoryStyle } from "@/lib/categoryStyle";
 import { formatPrice } from "@/lib/format";
@@ -21,6 +22,8 @@ const FIELDS = [
 
 export default function CartView() {
   const cart = useCart();
+  const auth = useAuth();
+  const loggedIn = auth.status === "user";
   const router = useRouter();
   const [form, setForm] = useState({ name: "", email: "", phone: "", address: "", city: "" });
   const [busy, setBusy] = useState(false);
@@ -48,7 +51,8 @@ export default function CartView() {
       const result = await api("/orders", {
         method: "POST",
         body: JSON.stringify({
-          customer: form,
+          // login อยู่ → ใช้ชื่อ/อีเมลจากบัญชี (API ใช้ Customer ของบัญชีใน ERPNext)
+          customer: loggedIn ? { ...form, name: auth.user.name, email: auth.user.email } : form,
           // ส่งแค่รหัส + จำนวน ไม่ส่งราคา (API คิดราคาเองจาก MongoDB — กันคนแก้ราคาใน browser)
           items: cart.items.map((i) => ({ code: i.code, qty: i.qty })),
         }),
@@ -126,7 +130,17 @@ export default function CartView() {
 
         <form onSubmit={handleSubmit} className="space-y-3">
           <h3 className="pt-2 font-semibold">Shipping Details</h3>
-          {FIELDS.map(([field, label, type, placeholder]) => (
+          {loggedIn ? (
+            <p className="rounded-lg bg-white p-3 text-sm">
+              Ordering as <b>{auth.user.name}</b> ({auth.user.email})
+            </p>
+          ) : (
+            <p className="text-sm text-zinc-600">
+              Have an account? <Link href="/login?next=/cart" className="font-medium text-brand hover:underline">Log in</Link> to track your orders.
+            </p>
+          )}
+          {/* login อยู่ → ไม่ต้องกรอกชื่อ/อีเมล (เอาจากบัญชี) */}
+          {FIELDS.filter(([field]) => !(loggedIn && (field === "name" || field === "email"))).map(([field, label, type, placeholder]) => (
             <label key={field} className="block text-sm">
               <span className="text-zinc-600">{label}</span>
               <input type={type} required placeholder={placeholder} value={form[field]}

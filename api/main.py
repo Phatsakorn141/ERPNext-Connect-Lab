@@ -20,7 +20,8 @@ from pydantic import BaseModel                  # ใช้กำหนดหน
 
 from config import settings                     # ค่าตั้งค่าจาก .env
 from db import client, db                       # ตัวเชื่อม MongoDB
-from routes import customers, local_customers, newsletter, orders, products, reviews, sync  # routes แยกไฟล์
+from routes import (account, auth, customers, local_customers, newsletter,  # routes แยกไฟล์
+                    orders, products, reviews, sync)
 
 # ใช้ logger ของ uvicorn → ข้อความจะขึ้นใน "docker compose logs api"
 log = logging.getLogger("uvicorn.error")
@@ -52,6 +53,10 @@ async def lifespan(app: FastAPI):
     """โค้ดก่อน yield = ตอน API เริ่ม, หลัง yield = ตอน API ปิด"""
     # index = ทำให้ค้นหาเร็ว (เหมือนสารบัญหนังสือ) — สร้างซ้ำได้ ถ้ามีแล้ว MongoDB ข้ามให้
     await db.reviews.create_index([("product_code", 1), ("created_at", -1)])
+    await db.users.create_index("email", unique=True)   # unique = อีเมลซ้ำไม่ได้
+    await db.orders.create_index([("user_id", 1), ("created_at", -1)])
+    # TTL index: MongoDB ลบ session ที่เลย expires_at ให้เองอัตโนมัติ
+    await db.sessions.create_index("expires_at", expireAfterSeconds=0)
 
     task = None
     if settings.sync_interval > 0:  # SYNC_INTERVAL=0 → ปิด auto-sync
@@ -76,12 +81,15 @@ app.include_router(products.router)         # /products, /categories → หน�
 app.include_router(orders.router)           # /orders → สั่งซื้อ = Sales Order ใน ERPNext
 app.include_router(reviews.router)          # /products/{code}/reviews, /reviews/latest → MongoDB
 app.include_router(newsletter.router)       # /newsletter → MongoDB
+app.include_router(auth.router)             # /auth/register, login, logout, me
+app.include_router(account.router)          # /account/orders (ต้อง login)
 
 # CORS: browser จะไม่ยอมให้เว็บ localhost:3000 เรียก API ที่ localhost:8000
 # (คนละ port = คนละ origin) ถ้า API ไม่บอกว่า "อนุญาต" → ตั้งไว้ตรงนี้
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],  # อนุญาตเฉพาะหน้าเว็บของเรา
+    allow_origins=["http://localhost:3000"],  # อนุญาตเฉพาะหน้าเว็บของเรา (ใช้ "*" ไม่ได้เมื่อส่ง cookie)
+    allow_credentials=True,                   # ให้ browser ส่ง/รับ cookie (session login) ได้
     allow_methods=["*"],                      # GET, POST, ... ได้หมด
     allow_headers=["*"],                      # header อะไรก็ได้ (เช่น Content-Type)
 )

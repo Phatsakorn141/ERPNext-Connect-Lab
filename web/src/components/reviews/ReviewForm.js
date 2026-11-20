@@ -6,9 +6,12 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Star } from "lucide-react";
 import { api } from "@/lib/api";
+import { useAuth } from "@/lib/auth";
 
 export default function ReviewForm({ code }) {
   const router = useRouter();
+  const auth = useAuth();
+  const loggedIn = auth.status === "user";
   const [name, setName] = useState("");
   const [rating, setRating] = useState(5);
   const [hover, setHover] = useState(0); // ดาวที่เมาส์ชี้อยู่ (โชว์ตัวอย่างก่อนกด)
@@ -24,7 +27,8 @@ export default function ReviewForm({ code }) {
     try {
       await api(`/products/${encodeURIComponent(code)}/reviews`, {
         method: "POST",
-        body: JSON.stringify({ name, rating, comment }),
+        // login อยู่ → ใช้ชื่อจากบัญชี
+        body: JSON.stringify({ name: loggedIn ? auth.user.name : name, rating, comment }),
       });
       setDone(true);
       setName("");
@@ -52,9 +56,13 @@ export default function ReviewForm({ code }) {
         ))}
       </div>
 
-      <input value={name} onChange={(e) => setName(e.target.value)} required maxLength={60}
-        placeholder="Your name" aria-label="Your name"
-        className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand" />
+      {loggedIn ? (
+        <p className="text-sm text-zinc-600">Reviewing as <b>{auth.user.name}</b></p>
+      ) : (
+        <input value={name} onChange={(e) => setName(e.target.value)} required maxLength={60}
+          placeholder="Your name" aria-label="Your name"
+          className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand" />
+      )}
       <textarea value={comment} onChange={(e) => setComment(e.target.value)} required minLength={3} maxLength={1000}
         rows={3} placeholder="What did you like or dislike?" aria-label="Review"
         className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand" />
